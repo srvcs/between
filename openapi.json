@@ -1,0 +1,139 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "srvcs-between",
+    "description": "",
+    "license": {
+      "name": "Apache-2.0",
+      "identifier": "Apache-2.0"
+    },
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "tags": [],
+        "summary": "`GET /` — service identity (srvcs service standard).",
+        "operationId": "index",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Info"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [],
+        "summary": "`POST /` — is `value` within the inclusive range `[lo, hi]`?",
+        "description": "This service does no comparison of its own. It computes\n`(value >= lo) AND (value <= hi)` by asking three primitives:\n`srvcs-greaterthanorequalto` for `value >= lo`,\n`srvcs-lessthanorequalto` for `value <= hi`, and `srvcs-and` to combine the\ntwo booleans. Invalid operands are rejected by the leaf comparison\ndependencies and the resulting `422` is forwarded unchanged.",
+        "operationId": "evaluate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BetweenResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "an operand is not a valid integer (forwarded)"
+          },
+          "500": {
+            "description": "a dependency returned an unexpected shape"
+          },
+          "503": {
+            "description": "a dependency is unavailable"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BetweenResponse": {
+        "type": "object",
+        "required": [
+          "value",
+          "lo",
+          "hi",
+          "result"
+        ],
+        "properties": {
+          "hi": {
+            "type": "object"
+          },
+          "lo": {
+            "type": "object"
+          },
+          "result": {
+            "type": "boolean",
+            "description": "`true` iff `lo <= value <= hi`."
+          },
+          "value": {
+            "type": "object"
+          }
+        }
+      },
+      "EvalRequest": {
+        "type": "object",
+        "required": [
+          "value",
+          "lo",
+          "hi"
+        ],
+        "properties": {
+          "hi": {
+            "type": "object"
+          },
+          "lo": {
+            "type": "object"
+          },
+          "value": {
+            "type": "object"
+          }
+        }
+      },
+      "Info": {
+        "type": "object",
+        "required": [
+          "service",
+          "concern",
+          "depends_on"
+        ],
+        "properties": {
+          "concern": {
+            "type": "string"
+          },
+          "depends_on": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "service": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
