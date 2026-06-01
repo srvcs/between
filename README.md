@@ -1,76 +1,82 @@
 # srvcs-between
 
-Range orchestrator for srvcs.cloud.
+## Name
 
-**Concern:** comparison: is value within `[lo, hi]`.
+| Field | Value |
+| --- | --- |
+| Service | `srvcs-between` |
+| Slug | `between` |
+| Repository | `srvcs/between` |
+| Package | `srvcs-between` |
+| Kind | `orchestrator` |
 
-`between` does no comparison of its own. It computes
-`(value >= lo) AND (value <= hi)` by composing three primitives:
+## Function
 
-- `srvcs-greaterthanorequalto` answers `value >= lo` (call `{"a": value, "b": lo}`),
-- `srvcs-lessthanorequalto` answers `value <= hi` (call `{"a": value, "b": hi}`),
-- `srvcs-and` combines the two booleans (call `{"a": g, "b": l}`).
-
-If any dependency is unreachable the service reports itself degraded (`503`)
-rather than guessing. If a leaf dependency rejects an operand as invalid, the
-`422` is forwarded unchanged.
-
-## API
-
-| Method | Path            | Description                                            |
-| ------ | --------------- | ------------------------------------------------------ |
-| GET    | `/`             | Service identity (service, concern, depends_on).       |
-| POST   | `/`             | Is `value` within `[lo, hi]`? Body `{value, lo, hi}`.  |
-| GET    | `/healthz`      | Liveness.                                              |
-| GET    | `/readyz`       | Readiness.                                             |
-| GET    | `/openapi.json` | OpenAPI document.                                      |
-| GET    | `/metrics`      | Prometheus metrics.                                    |
-
-### `POST /`
-
-Request:
-
-```json
-{ "value": 5, "lo": 0, "hi": 10 }
-```
-
-Response:
-
-```json
-{ "value": 5, "lo": 0, "hi": 10, "result": true }
-```
-
-Statuses: `200` (computed), `422` (an operand is not a valid integer,
-forwarded from a leaf dependency), `503` (a dependency is unavailable).
+comparison: is value within [lo, hi]
 
 ## Dependencies
 
-- `srvcs-greaterthanorequalto`
-- `srvcs-lessthanorequalto`
-- `srvcs-and`
+| Dependency | Repository |
+| --- | --- |
+| `srvcs-greaterthanorequalto` | [srvcs/greaterthanorequalto](https://github.com/srvcs/greaterthanorequalto) |
+| `srvcs-lessthanorequalto` | [srvcs/lessthanorequalto](https://github.com/srvcs/lessthanorequalto) |
+| `srvcs-and` | [srvcs/and](https://github.com/srvcs/and) |
+
+## API
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/` | Service identity |
+| `POST` | `/` | Evaluate the service function |
+| `GET` | `/healthz` | Liveness probe |
+| `GET` | `/readyz` | Readiness probe |
+| `GET` | `/metrics` | Prometheus metrics |
+| `GET` | `/openapi.json` | OpenAPI document |
+
+## Inputs
+
+| Name | Type | Required |
+| --- | --- | --- |
+| `value` | `json` | yes |
+| `lo` | `json` | yes |
+| `hi` | `json` | yes |
+
+## Outputs
+
+| Name | Type |
+| --- | --- |
+| `value` | `json` |
+| `lo` | `json` |
+| `hi` | `json` |
+| `result` | `boolean` |
 
 ## Configuration
 
-| Env var                          | Default                 | Description                              |
-| -------------------------------- | ----------------------- | ---------------------------------------- |
-| `SRVCS_BIND_ADDR`                | `0.0.0.0:8080`          | Host:port to bind.                       |
-| `RUST_LOG`                       | `info,tower_http=info`  | Log filter.                              |
-| `SRVCS_ENV`                      | `development`           | Environment label.                       |
-| `SRVCS_GREATERTHANOREQUALTO_URL` | `http://127.0.0.1:8084` | Base URL of `srvcs-greaterthanorequalto`.|
-| `SRVCS_LESSTHANOREQUALTO_URL`    | `http://127.0.0.1:8085` | Base URL of `srvcs-lessthanorequalto`.   |
-| `SRVCS_AND_URL`                  | `http://127.0.0.1:8086` | Base URL of `srvcs-and`.                 |
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `SRVCS_BIND_ADDR` | `0.0.0.0:8080` | Bind address |
+| `SRVCS_ENV` | `development` | Environment label for logs |
+| `RUST_LOG` | `info,tower_http=info` | Tracing filter |
+| `SRVCS_AND_URL` | `http://127.0.0.1:8086` | Base URL for srvcs-and |
+| `SRVCS_GREATERTHANOREQUALTO_URL` | `` | Base URL for srvcs-greaterthanorequalto |
+| `SRVCS_LESSTHANOREQUALTO_URL` | `` | Base URL for srvcs-lessthanorequalto |
 
-## Local checks
+## Error Behavior
+
+- `422` means the request could not be evaluated for the documented input shape.
+- `503` means a required dependency was unavailable or returned an unexpected response.
+- Dependency validation errors are forwarded when this service delegates validation.
+
+## Local Checks
 
 ```sh
-nix flake check -L
-nix develop -c sh -euc 'cargo fmt --check; cargo clippy --all-targets -- -D warnings; cargo test'
-nix build .#default -L
+cargo fmt --check
+cargo clippy --all-targets -- -D warnings
+cargo test
 ```
 
-The Linux container is exposed as `.#container`. On Apple Silicon, use
-`linux/arm64` for the practical local check; CI builds the release image on
-native `x86_64-linux`.
+See the [srvcs service standard](https://github.com/srvcs/platform/blob/main/STANDARD.md) for the full operational contract.
 
-See [`srvcs/platform`](https://github.com/srvcs/platform) for the shared service
-standard and CI workflow.
+## Metadata
+
+Machine-readable service metadata lives in `srvcs.yaml`. Keep it aligned with this README when the service contract changes.
